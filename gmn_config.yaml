@@ -14,8 +14,11 @@
 
 #### Important
 ##
-##   Any ADDITIONAL 'DEFAULT_*'configs added to this file must be also added to gitmynotes.py
-##   in the 'USER CONFIGS' section atop that file
+##   Any ADDITIONAL 'DEFAULT_*' configs added to this file must also be added to gitmynotes.py
+##   in the 'USER CONFIGS' section near the top of that file.
+##
+##   The newer 'CONVERT_TO_MARKDOWN' boolean (R8+) is handled specially and does NOT require
+##   a matching DEFAULT_* entry; it is the preferred way to choose markdown vs. raw-HTML output.
 ##
 ####
 
@@ -38,7 +41,13 @@
 'DEFAULT_BATCH_SIZE': 10 # notecount / batchsize = loopcount. 'notecount' is either explicit as 'maxnotes' or returned from get_foldernotecount(folder) if maxnotes not set.
 'DEFAULT_LOOPCOUNT_BEFORE_CONFIRM': 5 # loopcount X batchsize = notecount before you must confirm intention to process in one run. This can be over-ridden for use in full automation by adding '--force' to your command.
 'PRINT_LEVEL': 'ALL' # Can be 'NONE', 'RESULTS', 'DEBUG', or 'ALL'. CLI '--print' flag overrides this.
-'DEFAULT_BODY_FORMAT': 'markdown' # R8: 'markdown' (default) converts each note's HTML body to GitHub-flavored markdown via pandoc and prepends YAML frontmatter (title + creation_date + modification_date). 'html' is the escape hatch -- byte-identical to pre-R8 output (.md file with raw HTML body and the legacy <div>Creation/Modification Date</div> headers). 'markdown' mode requires the 'pandoc' binary on PATH (install via 'brew install pandoc'); GitMyNotes fails fast with a remediation message if pandoc is missing. Flip to 'html' to back up without installing pandoc.
+
+# Preferred (R8+): simple boolean to control pandoc conversion.
+# Set to False to skip pandoc conversion and output raw HTML inside the .md files
+CONVERT_TO_MARKDOWN: true
+
+# Legacy (still honored if CONVERT_TO_MARKDOWN is absent above):
+# 'DEFAULT_BODY_FORMAT': 'markdown' # 'markdown' (default) converts each note's HTML body to GitHub-flavored markdown via pandoc and prepends YAML frontmatter (title + creation_date + modification_date). 'html' is the escape hatch -- byte-identical to pre-R8 output (.md file with raw HTML body and the legacy <div>Creation/Modification Date</div> headers). 'markdown' mode requires the 'pandoc' binary on PATH (install via 'brew install pandoc'); GitMyNotes fails fast with a remediation message if pandoc is missing. Flip to 'html' (or set CONVERT_TO_MARKDOWN: false) to back up without installing pandoc.
 
 # This is a Work In Progress for users, like me, who have notes which are just a reddit link
 # Used with reddit_prefetch.py then reddit_fetch.py to flesh these notes with op post and top comment

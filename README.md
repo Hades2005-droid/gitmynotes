@@ -143,15 +143,16 @@ The frontmatter is parseable by anything that reads YAML (Python, Obsidian, Hugo
 
 Markdown conversion happens via pandoc (`pandoc -f html-native_divs -t gfm`), which handles paragraphs, lists, tables, inline formatting (bold, italic, code), and links cleanly. Notes.app attachment placeholders (drawings, embedded images) cannot survive the round trip — they reference internal Notes.app IDs that aren't part of the exported HTML — so those will appear as broken or absent in the output regardless of conversion.
 
-**If you don't want or can't install pandoc**, set in `gmn_config.yaml`:
+**If you don't want or can't install pandoc**, set the simple boolean in `gmn_config.yaml`:
 
 ```
-'DEFAULT_BODY_FORMAT': 'html'
+# Set to False to skip pandoc conversion and output raw HTML inside the .md files
+CONVERT_TO_MARKDOWN: false
 ```
 
-This disables the pandoc step entirely and falls back to the pre-2026 output: each `.md` file contains the raw HTML body with two `<div>` headers for Creation Date and Modification Date prepended. GitHub still renders this acceptably (markdown allows raw HTML) but downstream parseability is lost. You can flip back to `'markdown'` later — existing committed files won't be re-processed automatically; they'll migrate gradually as each note is edited and re-exported.
+This disables the pandoc step entirely and falls back to the pre-2026 output: each `.md` file contains the raw HTML body with two `<div>` headers for Creation Date and Modification Date prepended. GitHub still renders this acceptably (markdown allows raw HTML) but downstream parseability is lost. You can flip back to `true` later — existing committed files won't be re-processed automatically; they'll migrate gradually as each note is edited and re-exported.
 
-If you set `'DEFAULT_BODY_FORMAT': 'markdown'` and pandoc is not on `PATH`, GitMyNotes refuses to run and points you at both options (install pandoc or flip the config to `'html'`).
+The older string key `'DEFAULT_BODY_FORMAT': 'html'` (or `'markdown'`) is still honored if `CONVERT_TO_MARKDOWN` is not present in your yaml. The boolean form is now the recommended way to choose output style.
 
 
 

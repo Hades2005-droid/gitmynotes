@@ -28,8 +28,9 @@ Entry points worth knowing:
 
 macOS-only (depends on Notes.app + osascript). External deps: `ruamel.yaml`
 (pinned in requirements.txt) for round-trip config edits, and `pandoc` (a
-hard prereq when DEFAULT_BODY_FORMAT is 'markdown', the default). The 'html'
-escape hatch removes the pandoc prereq at the cost of raw-HTML-in-.md file.
+hard prereq when CONVERT_TO_MARKDOWN is true / DEFAULT_BODY_FORMAT is 'markdown',
+the default). Set CONVERT_TO_MARKDOWN: false (or the legacy 'html' value) to
+remove the pandoc prereq at the cost of raw-HTML-in-.md file.
 
 Operational notes:
   - Non-interactive / unattended runs (Cowork routines, cron, CI): pair
@@ -2224,46 +2225,62 @@ def main():
     # without updating their yaml. CLI --notes-account overrides per-run.
     DEFAULT_NOTES_ACCOUNT = cfg.get('DEFAULT_NOTES_ACCOUNT', 'iCloud')
 
-    # R8: output body format. 'markdown' (default) runs each note's HTML body
-    # through pandoc and prepends YAML frontmatter. 'html' is the escape hatch
-    # that preserves the pre-R8 output exactly (.md file with raw HTML body
-    # plus the legacy <div>Creation/Modification Date</div> headers). cfg.get
-    # fallback covers users who upgrade without updating their yaml.
-    DEFAULT_BODY_FORMAT = cfg.get('DEFAULT_BODY_FORMAT', 'markdown')
-    if DEFAULT_BODY_FORMAT not in ('markdown', 'html'):
-        logger.error(
-            f"Invalid DEFAULT_BODY_FORMAT '{DEFAULT_BODY_FORMAT}' in gmn_config.yaml; "
-            f"must be 'markdown' or 'html'."
-        )
-        print_color(
-            textcolor="red",
-            msg=(
-                f"ERROR: 'DEFAULT_BODY_FORMAT' in 'gmn_config.yaml' is set to '{DEFAULT_BODY_FORMAT}'.\n"
-                f"    Allowed values are 'markdown' or 'html'. Edit gmn_config.yaml and re-run."
-            ),
-            addseparator=True,
-        )
-        sys.exit(EXIT_HARD_FAILURE)
+    # R8+: body format control (preferred new key is the simple boolean).
+    # CONVERT_TO_MARKDOWN: true   -> convert each note's HTML body to GitHub-flavored
+    #                                 markdown via pandoc + write clean YAML frontmatter.
+    # CONVERT_TO_MARKDOWN: false  -> skip pandoc entirely; emit raw HTML body inside
+    #                                 the .md file (plus legacy <div> date headers).
+    # If CONVERT_TO_MARKDOWN is absent, fall back to the legacy string key for
+    # backward compatibility with existing gmn_config.yaml files.
+    convert_flag = cfg.get('CONVERT_TO_MARKDOWN', None)
+    if convert_flag is not None:
+        if not isinstance(convert_flag, bool):
+            logger.error("CONVERT_TO_MARKDOWN must be a boolean (true or false).")
+            print_color(
+                textcolor="red",
+                msg="ERROR: 'CONVERT_TO_MARKDOWN' in 'gmn_config.yaml' must be true or false (boolean).",
+                addseparator=True,
+            )
+            sys.exit(EXIT_HARD_FAILURE)
+        DEFAULT_BODY_FORMAT = 'markdown' if convert_flag else 'html'
+    else:
+        # legacy fallback (still supported)
+        DEFAULT_BODY_FORMAT = cfg.get('DEFAULT_BODY_FORMAT', 'markdown')
+        if DEFAULT_BODY_FORMAT not in ('markdown', 'html'):
+            logger.error(
+                f"Invalid DEFAULT_BODY_FORMAT '{DEFAULT_BODY_FORMAT}' in gmn_config.yaml; "
+                f"must be 'markdown' or 'html' (or use the preferred 'CONVERT_TO_MARKDOWN' boolean)."
+            )
+            print_color(
+                textcolor="red",
+                msg=(
+                    f"ERROR: 'DEFAULT_BODY_FORMAT' in 'gmn_config.yaml' is set to '{DEFAULT_BODY_FORMAT}'.\n"
+                    f"    Allowed values are 'markdown' or 'html', or (preferred) set CONVERT_TO_MARKDOWN: true/false.\n"
+                    f"    Edit gmn_config.yaml and re-run."
+                ),
+                addseparator=True,
+            )
+            sys.exit(EXIT_HARD_FAILURE)
 
     # R8: in 'markdown' mode pandoc is a hard prerequisite -- the per-note .html
     # files written by AppleScript are converted to .md by a Python sweep that
     # shells out to `pandoc -f html -t gfm`. Fail-fast here (before any folder
     # iteration, AppleScript invocation, or git work) with a remediation message
-    # pointing at both ways out: install pandoc or flip the yaml key. 'html' mode
-    # has no external dependencies so we skip the check entirely.
+    # pointing at both ways out. 'html' mode (CONVERT_TO_MARKDOWN: false) has no
+    # external dependencies.
     if DEFAULT_BODY_FORMAT == 'markdown' and not shutil.which('pandoc'):
         logger.error(
-            "DEFAULT_BODY_FORMAT='markdown' requires pandoc on PATH but it was not found."
+            "CONVERT_TO_MARKDOWN=true (or legacy DEFAULT_BODY_FORMAT='markdown') requires pandoc on PATH but it was not found."
         )
         print_color(
             textcolor="red",
             msg=(
-                "ERROR: 'pandoc' is required for 'DEFAULT_BODY_FORMAT': 'markdown' (the default).\n"
+                "ERROR: 'pandoc' is required when CONVERT_TO_MARKDOWN is true (the default).\n"
                 "    Two ways to resolve:\n"
                 "      1. Install pandoc:    brew install pandoc\n"
-                "      2. Or fall back to raw HTML output by editing 'gmn_config.yaml':\n"
-                "             'DEFAULT_BODY_FORMAT': 'html'\n"
-                "         (Produces the same .md-with-HTML-body output GitMyNotes shipped before R8.)\n"
+                "      2. Or disable conversion by editing 'gmn_config.yaml':\n"
+                "             CONVERT_TO_MARKDOWN: false\n"
+                "         (Produces the same raw-HTML-inside-.md output as before R8.)\n"
                 "    Then re-run. Exiting."
             ),
             addseparator=True,
