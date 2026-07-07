@@ -277,4 +277,40 @@ GitMyNotes exits with one of three codes so you can chain it cleanly in shell sc
 A partial-success run is safe to re-run -- the same notes won't be duplicated, and the work that already landed stays landed.
 
 
+## Optional: Asana sync reporting
+
+GitMyNotes can optionally report each run's outcome to an Asana project — one task per run summarizing success/failure, timestamps, note/file/character counts, conflicts, an audit trail, and a computed **Sync Resonance** score (0–100) with a **Technique Mastery** tier (Novice → Grandmaster). This is handled by the standalone, stdlib-only `asana_connector.py`.
+
+**It is off by default, opt-in, and non-blocking.** If Asana is unreachable, misconfigured, or the token is invalid, the notes backup is completely unaffected — reporting failures are logged and swallowed, and the run's exit code never changes.
+
+### Setup
+
+1. Create a Personal Access Token in Asana: **My Settings → Apps → Developer console** (`https://app.asana.com/0/my-apps`).
+2. Copy the example env file and fill in real values (the filled-in file is gitignored):
+
+   ```sh
+   cp asana.env.example asana.env
+   # edit asana.env with your token / workspace / project GIDs
+   set -a; source asana.env; set +a
+   ```
+
+3. Run GitMyNotes as usual. When `GMN_ASANA_ENABLED=1` and `ASANA_ACCESS_TOKEN` + `ASANA_PROJECT_GITMYNOTES` are present, a task is created per folder outcome.
+
+### Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `GMN_ASANA_ENABLED` | yes | Master switch. `1`/`true`/`yes`/`on` enables reporting; anything else keeps it off. |
+| `ASANA_ACCESS_TOKEN` | yes | Asana Personal Access Token. **Secret** — never commit it. |
+| `ASANA_PROJECT_GITMYNOTES` | yes | Project GID where run tasks are created. |
+| `ASANA_WORKSPACE_ID` | recommended | Workspace GID for the created task. |
+| `ASANA_BASE_URL` | no | Override the API base URL (defaults to `https://app.asana.com/api/1.0`). |
+| `RUN_LIVE_ASANA_TESTS` | no (tests) | Set to `1` to allow the live-API smoke test to run; otherwise all tests are fully mocked. |
+
+### Safe operation
+
+- **No secrets in code or logs.** All credentials come from the environment; the token is redacted (`****abcd`) anywhere it might be logged.
+- **`asana.env` is gitignored.** Only `asana.env.example` (placeholders) is tracked.
+- **Tests never hit the network by default.** `test_asana_connector.py` injects a stub transport; the single live test is skipped unless `RUN_LIVE_ASANA_TESTS=1` and real credentials are set. Run them with `pytest test_asana_connector.py` (or `python -m unittest test_asana_connector`).
+
 ### copyright 2026 mariochampion.com all rights reserved.

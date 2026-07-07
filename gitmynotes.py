@@ -164,6 +164,43 @@ CHANGEME_PLACEHOLDER = "<ChangeMe>"
 logger = logging.getLogger("gitmynotes")
 
 
+# Optional Asana reporting connector (opt-in, non-blocking). Imported guardedly
+# so a missing/broken asana_connector.py can never stop a notes backup. Enabled
+# only when GMN_ASANA_ENABLED=1 and ASANA_ACCESS_TOKEN are set (see
+# asana_connector.py). All calls go through safe_report_sync, which never raises.
+try:
+    import asana_connector as _asana
+except Exception:  # noqa: BLE001 -- reporting is strictly optional
+    _asana = None
+
+
+def report_run_to_asana(folder_outcomes, run_started_at):
+    """Best-effort, non-blocking Asana report of each folder's outcome.
+
+    No-op unless the connector is importable and enabled via env vars. Any
+    failure is logged and swallowed so the run's exit code is unaffected.
+    """
+    if _asana is None:
+        return
+    try:
+        config = _asana.AsanaConfig.from_env()
+        if not config.is_enabled:
+            return
+        connector = _asana.AsanaConnector(config=config)
+        finished = _asana._now_iso()
+        for outcome in folder_outcomes:
+            audit = [f"audit file: {outcome.get('audit_file')}"] if outcome.get('audit_file') else []
+            report = _asana.build_report_from_outcome(
+                outcome,
+                started_at=run_started_at,
+                finished_at=finished,
+                audit_events=audit,
+            )
+            connector.safe_report_sync(report)
+    except Exception as exc:  # noqa: BLE001 -- reporting must never break the run
+        logger.warning("Asana run reporting failed (non-fatal): %s", exc)
+
+
 
 
 #### USER CONFIGS
@@ -2165,6 +2202,10 @@ def main():
     # CLI override can be added later if needed.
     setup_logging()
 
+    # Optional Asana reporting: capture a run-start stamp so reports can show
+    # duration. ISO-8601 UTC; only used if the connector is enabled at exit.
+    run_started_at = datetime.now().astimezone().isoformat(timespec="seconds")
+
     # Exit-code taxonomy: track whether anything in this run was less-than-clean
     # so we can pick between EXIT_SUCCESS and EXIT_PARTIAL_SUCCESS at end of run.
     # Hard-failure paths (bad config, B10 guard, B8 fail-fast) sys.exit() directly
@@ -2745,6 +2786,10 @@ def main():
             usage_totals = [int(USAGE_GITMYNOTES_TOTAL_NEW), len(USAGE_FOLDERS_PROCESSED), int(USAGE_NOTES_PROCESSED_NEW)]
             final_msg = build_final_msg(gitnotes_url=f"{final_gitnotes_url}", audit_file=f"{audit_file}", usage_totals=usage_totals, share_url=f"{share_url}")
             print_color(textcolor="cyan", msg=f"{final_msg}", addseparator=True)
+
+    # Optional, non-blocking Asana report of this run's per-folder outcomes.
+    # No-op unless GMN_ASANA_ENABLED=1 + credentials are set; never raises.
+    report_run_to_asana(folder_outcomes, run_started_at)
 
     # Final exit per the cross-cutting taxonomy. Hard-failure paths (B10 guard,
     # B8 ChangeMe fail-fast) sys.exit(EXIT_HARD_FAILURE) directly and never
