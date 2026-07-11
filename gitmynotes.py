@@ -166,39 +166,42 @@ logger = logging.getLogger("gitmynotes")
 
 # Optional Asana reporting connector (opt-in, non-blocking). Imported guardedly
 # so a missing/broken asana_connector.py can never stop a notes backup. Enabled
-# only when GMN_ASANA_ENABLED=1 and ASANA_ACCESS_TOKEN are set (see
-# asana_connector.py). All calls go through safe_report_sync, which never raises.
+# only when ASANA_ACCESS_TOKEN are set. All calls go through Asana adapter,
+# which never raises and gracefully degrades if token not configured.
 try:
-    import asana_connector as _asana
+    from asana_connector import AsanaConfig
+    from adapters.asana_adapter import GitMyNotesAsanaReporter, SyncMetrics
+    _asana_available = True
 except Exception:  # noqa: BLE001 -- reporting is strictly optional
-    _asana = None
+    _asana_available = False
 
 
-def report_run_to_asana(folder_outcomes, run_started_at):
-    """Best-effort, non-blocking Asana report of each folder's outcome.
+def report_sync_to_asana(folder_name, notes_processed, notes_failed, sync_duration_ms, git_success, audit_file=None):
+    """Best-effort, non-blocking Asana report of sync outcome.
 
-    No-op unless the connector is importable and enabled via env vars. Any
-    failure is logged and swallowed so the run's exit code is unaffected.
+    No-op unless the connector is importable and ASANA_ACCESS_TOKEN is set.
+    Any failure is logged and swallowed so the run's exit code is unaffected.
     """
-    if _asana is None:
+    if not _asana_available:
         return
     try:
-        config = _asana.AsanaConfig.from_env()
-        if not config.is_enabled:
+        config = AsanaConfig.from_env()
+        if not config.enabled:
             return
-        connector = _asana.AsanaConnector(config=config)
-        finished = _asana._now_iso()
-        for outcome in folder_outcomes:
-            audit = [f"audit file: {outcome.get('audit_file')}"] if outcome.get('audit_file') else []
-            report = _asana.build_report_from_outcome(
-                outcome,
-                started_at=run_started_at,
-                finished_at=finished,
-                audit_events=audit,
-            )
-            connector.safe_report_sync(report)
+        reporter = GitMyNotesAsanaReporter(config)
+        metrics = SyncMetrics(
+            timestamp=datetime.now().isoformat(),
+            folder_name=folder_name,
+            notes_processed=notes_processed,
+            notes_failed=notes_failed,
+            sync_duration_ms=sync_duration_ms,
+            success=git_success and notes_failed == 0,
+        )
+        audit_entries = [f"audit file: {audit_file}"] if audit_file else []
+        reporter.report_sync(metrics, audit_entries=audit_entries)
+        logger.info(f"Asana report sent for folder '{folder_name}': {notes_processed} notes, success={git_success}")
     except Exception as exc:  # noqa: BLE001 -- reporting must never break the run
-        logger.warning("Asana run reporting failed (non-fatal): %s", exc)
+        logger.warning(f"Asana sync reporting failed (non-fatal): {exc}")
 
 
 
@@ -2048,8 +2051,23 @@ Add '--force' to skip confirmation in the future.'''
             ## SEND TO GITHUB BY DEFAULT, UNLESS 'LOCAL' OPTION SET TRUE
             if args.local_only:
                 print_color(textcolor="magenta", msg=f"The --local-only flag is set. No notes sent to Github", addseparator=True)
+                git_clean = False
             else:
+                git_start = time.time()
                 git_clean = git_add_commit_push(args.export_path, folder, wrapper_dir)
+                git_duration_ms = (time.time() - git_start) * 1000
+
+                # Report sync metrics to Asana (if configured)
+                if notes_processed > 0:
+                    report_sync_to_asana(
+                        folder_name=folder,
+                        notes_processed=notes_processed,
+                        notes_failed=0,
+                        sync_duration_ms=git_duration_ms,
+                        git_success=git_clean,
+                        audit_file=audit_file,
+                    )
+
                 if not git_clean:
                     partial_for_folder = True
 
