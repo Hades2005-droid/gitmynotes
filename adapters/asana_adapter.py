@@ -16,7 +16,9 @@ from dataclasses import dataclass, asdict
 
 # Import shared connector
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Repo root (where the asana_connector/ package lives) is two levels up:
+# adapters/asana_adapter.py -> adapters/ -> <repo root>.
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from asana_connector import (
     AsanaClient,
     AsanaConfig,

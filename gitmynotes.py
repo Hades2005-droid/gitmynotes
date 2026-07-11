@@ -186,6 +186,8 @@ def report_sync_to_asana(folder_name, notes_processed, notes_failed, sync_durati
         return
     try:
         config = AsanaConfig.from_env()
+        # Airtight guard: do nothing unless a token AND workspace are set.
+        # Without this, no network call is ever attempted (no-op + local log).
         if not config.enabled:
             return
         reporter = GitMyNotesAsanaReporter(config)

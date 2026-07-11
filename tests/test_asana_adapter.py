@@ -48,6 +48,67 @@ class TestGitMyNotesConfig(unittest.TestCase):
             config = AsanaConfig()
             self.assertEqual(config.api_token, "test-token")
 
+    def test_config_accepts_access_token_name(self):
+        """ASANA_ACCESS_TOKEN is honored (and preferred over ASANA_API_TOKEN)."""
+        with patch.dict(
+            os.environ,
+            {
+                "ASANA_ACCESS_TOKEN": "access-token",
+                "ASANA_API_TOKEN": "api-token",
+                "ASANA_WORKSPACE_ID": "test-workspace",
+            },
+        ):
+            config = AsanaConfig.from_env()
+            self.assertEqual(config.api_token, "access-token")
+            self.assertTrue(config.enabled)
+
+    def test_config_disabled_without_token(self):
+        """Constructing without a token must not raise; enabled must be False."""
+        with patch.dict(os.environ, {}, clear=True):
+            config = AsanaConfig.from_env()
+            self.assertIsNone(config.api_token)
+            self.assertFalse(config.enabled)
+            self.assertFalse(config.is_enabled)
+
+    def test_config_disabled_without_workspace(self):
+        """A token alone (no workspace) is still disabled -- airtight guard."""
+        with patch.dict(os.environ, {"ASANA_ACCESS_TOKEN": "t"}, clear=True):
+            config = AsanaConfig.from_env()
+            self.assertFalse(config.enabled)
+
+
+class TestReportSyncGuard(unittest.TestCase):
+    """The sync-reporting entry point must no-op unless fully configured."""
+
+    def test_report_sync_no_op_without_config(self):
+        """report_sync_to_asana must not construct a reporter when disabled."""
+        import importlib
+        try:
+            gmn = importlib.import_module("gitmynotes")
+        except ImportError as exc:
+            # gitmynotes.py depends on ruamel.yaml; skip where it's absent
+            # (the guard logic under test is import-independent).
+            self.skipTest(f"gitmynotes module unavailable: {exc}")
+
+        called = {"reporter": False}
+
+        def _fail_reporter(*args, **kwargs):
+            called["reporter"] = True
+            raise AssertionError("reporter must not be built when disabled")
+
+        with patch.dict(os.environ, {}, clear=True), \
+                patch.object(gmn, "_asana_available", True), \
+                patch.object(gmn, "GitMyNotesAsanaReporter", _fail_reporter):
+            # Should return quietly without touching the reporter/network.
+            gmn.report_sync_to_asana(
+                folder_name="Any",
+                notes_processed=3,
+                notes_failed=0,
+                sync_duration_ms=10.0,
+                git_success=True,
+            )
+        self.assertFalse(called["reporter"])
+
 
 class TestSyncMetrics(unittest.TestCase):
     """Test sync metrics dataclass."""
