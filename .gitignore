@@ -5,6 +5,10 @@ setup.py
 currentnote.txt
 metadata_rows.txt
 
+# Asana connector secrets -- keep the .example, never the filled-in file.
+asana.env
+*.asana.env
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

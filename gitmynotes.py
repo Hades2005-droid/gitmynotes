@@ -164,6 +164,48 @@ CHANGEME_PLACEHOLDER = "<ChangeMe>"
 logger = logging.getLogger("gitmynotes")
 
 
+# Optional Asana reporting connector (opt-in, non-blocking). Imported guardedly
+# so a missing/broken asana_connector.py can never stop a notes backup. Enabled
+# only when ASANA_ACCESS_TOKEN are set. All calls go through Asana adapter,
+# which never raises and gracefully degrades if token not configured.
+try:
+    from asana_connector import AsanaConfig
+    from adapters.asana_adapter import GitMyNotesAsanaReporter, SyncMetrics
+    _asana_available = True
+except Exception:  # noqa: BLE001 -- reporting is strictly optional
+    _asana_available = False
+
+
+def report_sync_to_asana(folder_name, notes_processed, notes_failed, sync_duration_ms, git_success, audit_file=None):
+    """Best-effort, non-blocking Asana report of sync outcome.
+
+    No-op unless the connector is importable and ASANA_ACCESS_TOKEN is set.
+    Any failure is logged and swallowed so the run's exit code is unaffected.
+    """
+    if not _asana_available:
+        return
+    try:
+        config = AsanaConfig.from_env()
+        # Airtight guard: do nothing unless a token AND workspace are set.
+        # Without this, no network call is ever attempted (no-op + local log).
+        if not config.enabled:
+            return
+        reporter = GitMyNotesAsanaReporter(config)
+        metrics = SyncMetrics(
+            timestamp=datetime.now().isoformat(),
+            folder_name=folder_name,
+            notes_processed=notes_processed,
+            notes_failed=notes_failed,
+            sync_duration_ms=sync_duration_ms,
+            success=git_success and notes_failed == 0,
+        )
+        audit_entries = [f"audit file: {audit_file}"] if audit_file else []
+        reporter.report_sync(metrics, audit_entries=audit_entries)
+        logger.info(f"Asana report sent for folder '{folder_name}': {notes_processed} notes, success={git_success}")
+    except Exception as exc:  # noqa: BLE001 -- reporting must never break the run
+        logger.warning(f"Asana sync reporting failed (non-fatal): {exc}")
+
+
 
 
 #### USER CONFIGS
@@ -2011,8 +2053,23 @@ Add '--force' to skip confirmation in the future.'''
             ## SEND TO GITHUB BY DEFAULT, UNLESS 'LOCAL' OPTION SET TRUE
             if args.local_only:
                 print_color(textcolor="magenta", msg=f"The --local-only flag is set. No notes sent to Github", addseparator=True)
+                git_clean = False
             else:
+                git_start = time.time()
                 git_clean = git_add_commit_push(args.export_path, folder, wrapper_dir)
+                git_duration_ms = (time.time() - git_start) * 1000
+
+                # Report sync metrics to Asana (if configured)
+                if notes_processed > 0:
+                    report_sync_to_asana(
+                        folder_name=folder,
+                        notes_processed=notes_processed,
+                        notes_failed=0,
+                        sync_duration_ms=git_duration_ms,
+                        git_success=git_clean,
+                        audit_file=audit_file,
+                    )
+
                 if not git_clean:
                     partial_for_folder = True
 
@@ -2164,6 +2221,10 @@ def main():
     # alongside the existing colored TTY prints. Hardcoded log location for now;
     # CLI override can be added later if needed.
     setup_logging()
+
+    # Optional Asana reporting: capture a run-start stamp so reports can show
+    # duration. ISO-8601 UTC; only used if the connector is enabled at exit.
+    run_started_at = datetime.now().astimezone().isoformat(timespec="seconds")
 
     # Exit-code taxonomy: track whether anything in this run was less-than-clean
     # so we can pick between EXIT_SUCCESS and EXIT_PARTIAL_SUCCESS at end of run.
@@ -2745,6 +2806,10 @@ def main():
             usage_totals = [int(USAGE_GITMYNOTES_TOTAL_NEW), len(USAGE_FOLDERS_PROCESSED), int(USAGE_NOTES_PROCESSED_NEW)]
             final_msg = build_final_msg(gitnotes_url=f"{final_gitnotes_url}", audit_file=f"{audit_file}", usage_totals=usage_totals, share_url=f"{share_url}")
             print_color(textcolor="cyan", msg=f"{final_msg}", addseparator=True)
+
+    # Optional, non-blocking Asana report of this run's per-folder outcomes.
+    # No-op unless GMN_ASANA_ENABLED=1 + credentials are set; never raises.
+    report_run_to_asana(folder_outcomes, run_started_at)
 
     # Final exit per the cross-cutting taxonomy. Hard-failure paths (B10 guard,
     # B8 ChangeMe fail-fast) sys.exit(EXIT_HARD_FAILURE) directly and never
