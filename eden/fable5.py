@@ -25,8 +25,11 @@ from typing import Optional
 try:
     import anthropic
 except ImportError as exc:  # pragma: no cover - dependency hint
-    raise SystemExit(
-        "The 'anthropic' package is required for Fable 5.\n"
+    # Raise ImportError (not SystemExit): callers import this module optionally
+    # and guard with ``except Exception``, so they degrade gracefully when the
+    # SDK is missing. SystemExit is a BaseException and would slip past them.
+    raise ImportError(
+        "The 'anthropic' package is required for Fable 5. "
         "Install it with:  pip install anthropic"
     ) from exc
 
