@@ -38,6 +38,7 @@ import fable5_comfyui_unification as u
 from app_index_codex import build_codex, resolve_ledger, validate_codex
 from discord_pplx_unify import build_unify as build_discord_unify, validate_unify
 from sovereign_boundary import build_boundary, validate_boundary
+from mesh_status import mesh_status
 
 # Opaque pointers only -- never called from here.
 PERPLEXITY_TASK_ID = u.SECONDARY_UNIFICATION_REVIEW_TASK_ID
@@ -93,6 +94,9 @@ def build_handoff(today: Optional[_date] = None) -> Dict[str, object]:
         "appIndexCodex": build_codex(),
         "discordPplxUnify": discord_unify,
         "sovereignBoundary": boundary,
+        # Opt-in offline playtest cue: is the Grok/xAI lane ready? Env NAMES only,
+        # never secret values; an internal open-door read (no external write).
+        "meshReadiness": mesh_status(),
         "playableSlice": {
             "path": "eden/game",
             "smoke": "cd eden/game && npm run smoke",

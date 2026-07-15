@@ -44,6 +44,7 @@ INTERNAL_ACTIONS = (
     "catalog_insertion",
     "dry_run",
     "local_render_preview",
+    "mesh_readiness_read",
 )
 
 # External (Yin) actions: closed door, per-action confirm, never blanket.
