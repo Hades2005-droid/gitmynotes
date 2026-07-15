@@ -28,7 +28,7 @@ python3 eden/mesh_status.py            # prints the readiness JSON
   var *name*; a test sets `XAI_API_KEY` to a sentinel and asserts it never appears
   in the output.
 - **Metadata-only + graceful absence.** Pointer readers surface only whitelisted
-  top-level fields and return `{ok: false}` when a file is missing or unpar05sable
+  top-level fields and return `{ok: false}` when a file is missing or unparsable
   (which is the case in this cloud workspace — `~/ShadowGarden` isn't mounted).
 
 ## Pipeline ingestion
