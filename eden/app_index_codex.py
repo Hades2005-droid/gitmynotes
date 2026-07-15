@@ -265,6 +265,22 @@ def resolve_ledger(
     return result
 
 
+def ledger_table() -> Dict[str, object]:
+    """Export the canonical 1-42 ledger as JSON-able data (single source of truth).
+
+    The JS party-round loads this so the game and the Python codex never diverge.
+    """
+    return {
+        "surface": SURFACE,
+        "domain": CONTENT_DOMAIN,
+        "masterNumbers": list(MASTER_NUMBERS),
+        "ledger": {
+            str(coord): {"name": name, "flavor": flavor}
+            for coord, (name, flavor) in LEDGER.items()
+        },
+    }
+
+
 def build_codex() -> Dict[str, object]:
     """Return the full merged codex descriptor (pure/local)."""
     return {
@@ -315,9 +331,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--validate", action="store_true", help="Validate the codex and exit.")
     parser.add_argument("--date", metavar="YYYY-MM-DD", help="Resolve a date reading.")
     parser.add_argument("--time", metavar="HH:MM", help="Optional 24h timestamp for the reading.")
+    parser.add_argument("--ledger-json", metavar="PATH", help="Export the canonical ledger table JSON.")
     args = parser.parse_args(argv)
 
     validate_codex()
+
+    if args.ledger_json:
+        payload = json.dumps(ledger_table(), indent=2, sort_keys=True)
+        with open(args.ledger_json, "w", encoding="utf-8") as fh:
+            fh.write(payload + "\n")
+        print(f"Wrote canonical ledger table to {args.ledger_json}")
+        return 0
 
     if args.validate and not args.date:
         print("OK: APP INDEX codex is a bounded, non-medical, symbolic-only game merge")

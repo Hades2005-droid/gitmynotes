@@ -92,11 +92,14 @@ def build_handoff(today: Optional[_date] = None) -> Dict[str, object]:
         "playableSlice": {
             "path": "eden/game",
             "smoke": "cd eden/game && npm run smoke",
+            "playableRound": "node simulations/party-round.js --rounds=3",
             "sims": [
                 "simulations/run-4.2-game-simulation.js",
                 "simulations/clock-test.js",
                 "simulations/nyc-local-dev-simulator.js",
+                "simulations/party-round.js",
             ],
+            "convergence": "date->ledger archetype turn prompt -> bounded round -> visible win/hold/lose + restart",
         },
         "todayReading": resolve_ledger(today),
         "nextStep": (

@@ -1,0 +1,179 @@
+{
+  "domain": "fictional_adult_18plus_simulation_game",
+  "ledger": {
+    "1": {
+      "flavor": "Ignition: initiate the turn, generate the move.",
+      "name": "The Magician"
+    },
+    "10": {
+      "flavor": "Pivot: the weather changed; adapt the plan.",
+      "name": "The Wheel"
+    },
+    "11": {
+      "flavor": "Master ledger audit: balance debts, hold tension.",
+      "name": "Justice"
+    },
+    "12": {
+      "flavor": "Suspension: delay the response to cool the grid.",
+      "name": "The Hanged Man"
+    },
+    "13": {
+      "flavor": "Amputation: clean cut of dead code.",
+      "name": "Death"
+    },
+    "14": {
+      "flavor": "Alchemy: transmute anxiety into base-reality output.",
+      "name": "Temperance"
+    },
+    "15": {
+      "flavor": "Apophenia shield: label the phantom as zero-mass static.",
+      "name": "The Devil"
+    },
+    "16": {
+      "flavor": "Brace: drop the theory, handle the physical crisis.",
+      "name": "The Tower"
+    },
+    "17": {
+      "flavor": "Unrestricted flow: perimeter clear, engage the inner circle.",
+      "name": "The Star"
+    },
+    "18": {
+      "flavor": "Proxy bypass: treat proxies as NPCs, no subtext.",
+      "name": "The Moon"
+    },
+    "19": {
+      "flavor": "Kilonova brace: stand in the blast, route it into building.",
+      "name": "The Sun"
+    },
+    "2": {
+      "flavor": "Duality: hold still, read the board.",
+      "name": "The High Priestess"
+    },
+    "20": {
+      "flavor": "Baseline reset: wash the cache, restart the cycle.",
+      "name": "Judgement"
+    },
+    "21": {
+      "flavor": "Loop closure: send the final packet, seal the cycle.",
+      "name": "The World"
+    },
+    "22": {
+      "flavor": "Master foundation: immovable concrete baseline.",
+      "name": "The Master Builder"
+    },
+    "23": {
+      "flavor": "New boundary disrupts the matrix -> hold the void.",
+      "name": "Sovereign Friction"
+    },
+    "24": {
+      "flavor": "Logistical perfection -> enjoy, watch for drift.",
+      "name": "Localized Harmony"
+    },
+    "25": {
+      "flavor": "Bypass FOMO -> ground in heavy mass.",
+      "name": "Chariot's Logic"
+    },
+    "26": {
+      "flavor": "Track the reward -> demand presence over text.",
+      "name": "Engine's Output"
+    },
+    "27": {
+      "flavor": "Finality -> quarantine failing nodes.",
+      "name": "Queen's Code"
+    },
+    "28": {
+      "flavor": "False security -> run the absolute-zero routine.",
+      "name": "Perfect Mass"
+    },
+    "29": {
+      "flavor": "A node in your gravity -> let it orbit, don't invite landing.",
+      "name": "Orbit Prime"
+    },
+    "3": {
+      "flavor": "Catalyst: expand, but cap the burn.",
+      "name": "The Empress"
+    },
+    "30": {
+      "flavor": "Triple-bind trap -> physically leave the grid.",
+      "name": "Trinity Fold"
+    },
+    "31": {
+      "flavor": "Unsupported -> smile at the dark, build the wall.",
+      "name": "Prime Isolation"
+    },
+    "32": {
+      "flavor": "A tree shatters -> prepare for inertial capture.",
+      "name": "Binary Collapse"
+    },
+    "33": {
+      "flavor": "Master resonance: walk through chaos untouched.",
+      "name": "Ascended Flow"
+    },
+    "34": {
+      "flavor": "Compounding pull -> acknowledge gravity, seal exits.",
+      "name": "Fibonacci Drift"
+    },
+    "35": {
+      "flavor": "Outflanked -> stand still, let the flank collapse.",
+      "name": "Pentagonal Trap"
+    },
+    "36": {
+      "flavor": "Peak surveillance -> go ghost.",
+      "name": "Panopticon"
+    },
+    "37": {
+      "flavor": "See the source -> log data, take no action.",
+      "name": "Ascended Observer"
+    },
+    "38": {
+      "flavor": "Heat fading to logic -> harness the remainder.",
+      "name": "Isotope Decay"
+    },
+    "39": {
+      "flavor": "Collision by attrition -> maintain stamina.",
+      "name": "Late-Stage Syzygy"
+    },
+    "4": {
+      "flavor": "Structure: lock the perimeter, play logistics.",
+      "name": "The Emperor"
+    },
+    "40": {
+      "flavor": "Toxic proxies -> silent deletion.",
+      "name": "Quarantine Zone"
+    },
+    "41": {
+      "flavor": "The threshold -> enter, let physics lock in.",
+      "name": "Event Horizon"
+    },
+    "42": {
+      "flavor": "Ultimate capstone -> dictate the room's geometry.",
+      "name": "Sovereign Anchor"
+    },
+    "5": {
+      "flavor": "Friction: endure the anomaly, do not thrash.",
+      "name": "The Hierophant"
+    },
+    "6": {
+      "flavor": "Equilibrium: balance the scales, mirror the room.",
+      "name": "The Lovers"
+    },
+    "7": {
+      "flavor": "Momentum: commit forward, no rearview.",
+      "name": "The Chariot"
+    },
+    "8": {
+      "flavor": "Infinite loop: bypass the karmic repeat with a whisper.",
+      "name": "Strength"
+    },
+    "9": {
+      "flavor": "Apex: stand in your own gravity, need no vote.",
+      "name": "The Hermit"
+    }
+  },
+  "masterNumbers": [
+    11,
+    22,
+    33
+  ],
+  "surface": "app_index_spacetime_ledger"
+}

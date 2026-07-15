@@ -38,14 +38,38 @@ node simulations/nyc-local-dev-simulator.js --requests=200 --seed=42 --json
 node simulations/nyc-local-dev-simulator.js --endpoints=auth,users,healthz --requests=150
 ```
 
-## Smoke test (the playable vertical slice)
+### `party-round.js` — the playable round (convergence)
+
+Reads today's (or `--date`) Spacetime ledger archetype as the round's **turn
+prompt**, binds an anchor matriarch, runs a bounded round, and prints a visible
+**win/hold/lose** resolution. Supports restart via `--rounds=N`. The ledger table
+is loaded from `../src/game/ledger.json`, which is exported from the canonical
+Python codex (`python eden/app_index_codex.py --ledger-json …`) so the game and
+codex never diverge.
 
 ```bash
-cd eden/game && npm run smoke
+node simulations/party-round.js                                   # today, 1 round
+node simulations/party-round.js --date=2026-07-15 --seed=42 --rounds=3
+node simulations/party-round.js --json                            # machine output
 ```
 
-Runs all three sims with fixed seeds and fails the process if the clock slice
-misfires. This is the locally runnable vertical slice for the evolution loop.
+Regenerate the ledger after editing the Python codex:
+
+```bash
+python3 eden/app_index_codex.py --ledger-json eden/game/src/game/ledger.json
+```
+
+## Smoke test + tests (the playable vertical slice)
+
+```bash
+cd eden/game && npm run smoke   # all four sims, fixed seeds
+cd eden/game && npm test        # node --test: 10 assertions (mechanics + round)
+```
+
+`npm run smoke` runs every sim with fixed seeds and fails if the clock slice
+misfires. `party-round.js` is the convergence milestone: a complete short round
+with a clear turn prompt, deterministic resolution, visible end state, and
+restart — no external write.
 
 ## Future Ideas
 - Stress-test specific ability combinations

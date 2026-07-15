@@ -60,6 +60,19 @@ class ManifestShapeTests(unittest.TestCase):
         self.assertIn("unification_target", roles)
         self.assertIn("fable5_comfyui_open_merge_target", roles)
 
+    def test_operator_authorization_is_inclusion_only(self):
+        auth = self.manifest.to_dict()["operatorAuthorization"]
+        self.assertEqual(auth["scope"], "pointer_only_inclusion")
+        for forbidden in (
+            "network_or_api_calls",
+            "tokens_or_credentials",
+            "live_webhook_send",
+            "content_boundary_exception",
+            "autonomous_broadcast",
+        ):
+            self.assertIn(forbidden, auth["doesNotGrant"])
+            self.assertNotIn(forbidden, auth["grants"])
+
     def test_pointer_only_integrations_present(self):
         by_name = {i["name"]: i for i in self.manifest.to_dict()["integrations"]}
         self.assertEqual(
@@ -202,6 +215,17 @@ class SafetyInvariantTests(unittest.TestCase):
         loose = dict(u.INTEGRATIONS[0])
         loose["policy"] = "wallet_signing_enabled"
         bad = dataclasses.replace(self.manifest, integrations=(loose, u.INTEGRATIONS[1]))
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_discord_live_webhook_policy_rejected(self):
+        import dataclasses
+
+        loose = dict(u.INTEGRATIONS[2])
+        loose["policy"] = "live_send_enabled"
+        bad = dataclasses.replace(
+            self.manifest, integrations=(u.INTEGRATIONS[0], u.INTEGRATIONS[1], loose)
+        )
         with self.assertRaises(u.UnificationPolicyError):
             u.validate_manifest(bad)
 

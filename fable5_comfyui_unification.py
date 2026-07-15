@@ -79,6 +79,30 @@ CONTENT_BOUNDARY = {
     "correctionDoc": "docs/FABLE5_MEMORY_CORRECTION.md",
 }
 
+# Operator authorization basis. The operator confirmed full admin authorization
+# to INCLUDE these sources -- and, in the same instruction, that this grants no
+# API calls, no tokens, and keeps the webhook ARMED_AWAITING_TOKEN. So the
+# authorization is *inclusion-only* and, by construction, can never flip a safety
+# flag (enforced in validate_manifest).
+OPERATOR_AUTHORIZATION = {
+    "basis": "operator_admin_authorized",
+    "scope": "pointer_only_inclusion",
+    "grants": ["include_sources_as_pointer_catalog_entries"],
+    "doesNotGrant": [
+        "network_or_api_calls",
+        "tokens_or_credentials",
+        "live_webhook_send",
+        "content_boundary_exception",
+        "autonomous_broadcast",
+    ],
+    "note": (
+        "Operator confirmed full admin authorization to INCLUDE these sources. "
+        "Per that same instruction: no API calls, no tokens, webhook stays "
+        "ARMED_AWAITING_TOKEN. Authorization is inclusion-only and never relaxes "
+        "a safety invariant."
+    ),
+}
+
 # Roles this repository is expected to remain compatible with.
 ROLE_UNIFICATION_TARGET = "unification_target"
 ROLE_OPEN_MERGE_TARGET = "fable5_comfyui_open_merge_target"
@@ -242,6 +266,7 @@ class UnificationManifest:
             "endpoints": [e.to_dict() for e in self.endpoints],
             "mediaPermissions": [p.to_dict() for p in self.media_permissions],
             "integrations": [dict(i) for i in self.integrations],
+            "operatorAuthorization": dict(OPERATOR_AUTHORIZATION),
             "externalRequests": self.external_requests,
             "trainingAllowed": self.training_allowed,
             "weightAutoDownload": self.weight_auto_download,
@@ -299,6 +324,27 @@ def validate_manifest(manifest: UnificationManifest) -> None:
         raise UnificationPolicyError("broadcasting must be False")
     if manifest.external_writes:
         raise UnificationPolicyError("externalWrites must be False")
+
+    # Operator authorization is inclusion-only: it must explicitly refuse to grant
+    # network, tokens, live send, content-boundary exceptions, or broadcast. This
+    # guarantees "full admin authorization" can never be read as a safety bypass.
+    auth = OPERATOR_AUTHORIZATION
+    if auth["scope"] != "pointer_only_inclusion":
+        raise UnificationPolicyError("operator authorization must be pointer_only_inclusion")
+    forbidden = {
+        "network_or_api_calls",
+        "tokens_or_credentials",
+        "live_webhook_send",
+        "content_boundary_exception",
+        "autonomous_broadcast",
+    }
+    if not forbidden.issubset(set(auth["doesNotGrant"])):
+        raise UnificationPolicyError(
+            "operator authorization must explicitly withhold network/tokens/live-send/"
+            "content-boundary/broadcast grants"
+        )
+    if forbidden & set(auth["grants"]):
+        raise UnificationPolicyError("operator authorization must not grant any forbidden capability")
 
     if manifest.secondary_unification_review_task_id != SECONDARY_UNIFICATION_REVIEW_TASK_ID:
         raise UnificationPolicyError(

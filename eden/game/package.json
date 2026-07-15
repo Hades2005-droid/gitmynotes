@@ -8,7 +8,9 @@
     "sim": "node simulations/run-4.2-game-simulation.js",
     "clock": "node simulations/clock-test.js",
     "nyc": "node simulations/nyc-local-dev-simulator.js",
-    "smoke": "node simulations/run-4.2-game-simulation.js && node simulations/clock-test.js && node simulations/nyc-local-dev-simulator.js --requests=40 --seed=42"
+    "round": "node simulations/party-round.js --rounds=3 --seed=42",
+    "test": "node --test simulations/*.test.mjs",
+    "smoke": "node simulations/run-4.2-game-simulation.js && node simulations/clock-test.js && node simulations/nyc-local-dev-simulator.js --requests=40 --seed=42 && node simulations/party-round.js --rounds=3 --seed=42"
   },
   "license": "SEE LICENSE IN ../../LICENSE"
 }
