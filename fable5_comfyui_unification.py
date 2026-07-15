@@ -96,6 +96,35 @@ MEDIA_TYPES = ("image", "video", "audio")
 # are pointers to runtimes the operator runs locally, not remote services.
 LOCAL_HOST = "127.0.0.1"
 
+# External integrations recorded as *pointer-only* references. This surface never
+# calls, authenticates to, or scrapes them; it only records that the game may hand
+# a bounded, operator-approved payload to them elsewhere.
+INTEGRATIONS: tuple = (
+    {
+        "name": "phantom_docs_mcp",
+        "kind": "mcp_docs_readonly",
+        "ref": "https://docs.phantom.com/mcp",
+        "role": "wallet_sdk_docs_context",
+        "policy": "read_only_docs_no_wallet_action_here",
+        "note": (
+            "Phantom Cursor plugin docs MCP -- read-only SDK guidance for a "
+            "fictional in-game 'wallet' flavor layer. No keys, no signing, no "
+            "on-chain action from this surface."
+        ),
+    },
+    {
+        "name": "asuna_unified_chat",
+        "kind": "chat_handoff_target",
+        "ref": "local://asuna-unified-chat",
+        "role": "fable5_evolution_handoff",
+        "policy": "manual_attach_no_auto_post",
+        "note": (
+            "Unified Asuna chat that Fable 5 evolutions feed forward into. The "
+            "handoff bundle is written locally; a human attaches it. No auto-post."
+        ),
+    },
+)
+
 
 @dataclass(frozen=True)
 class EndpointContract:
@@ -173,6 +202,7 @@ class UnificationManifest:
     compatible_roles: tuple
     endpoints: tuple
     media_permissions: tuple
+    integrations: tuple = INTEGRATIONS
     external_requests: int = 0
     training_allowed: bool = False
     weight_auto_download: bool = False
@@ -199,6 +229,7 @@ class UnificationManifest:
             "compatibleRoles": list(self.compatible_roles),
             "endpoints": [e.to_dict() for e in self.endpoints],
             "mediaPermissions": [p.to_dict() for p in self.media_permissions],
+            "integrations": [dict(i) for i in self.integrations],
             "externalRequests": self.external_requests,
             "trainingAllowed": self.training_allowed,
             "weightAutoDownload": self.weight_auto_download,
@@ -285,6 +316,20 @@ def validate_manifest(manifest: UnificationManifest) -> None:
         raise UnificationPolicyError(
             "manifest must preserve compatibility with "
             f"{COMPATIBLE_ROLES!r}, got {manifest.compatible_roles!r}"
+        )
+
+    # Integrations are pointer-only: Phantom docs stay read-only (no wallet action
+    # from here) and the Asuna chat handoff never auto-posts.
+    integ_by_name = {i["name"]: i for i in manifest.integrations}
+    phantom = integ_by_name.get("phantom_docs_mcp")
+    if phantom and phantom["policy"] != "read_only_docs_no_wallet_action_here":
+        raise UnificationPolicyError(
+            "phantom_docs_mcp must stay read-only docs (no wallet action here)"
+        )
+    asuna = integ_by_name.get("asuna_unified_chat")
+    if asuna and asuna["policy"] != "manual_attach_no_auto_post":
+        raise UnificationPolicyError(
+            "asuna_unified_chat must be manual-attach, no auto-post"
         )
 
     if not manifest.endpoints:

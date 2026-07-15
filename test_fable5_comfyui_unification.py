@@ -60,6 +60,16 @@ class ManifestShapeTests(unittest.TestCase):
         self.assertIn("unification_target", roles)
         self.assertIn("fable5_comfyui_open_merge_target", roles)
 
+    def test_pointer_only_integrations_present(self):
+        by_name = {i["name"]: i for i in self.manifest.to_dict()["integrations"]}
+        self.assertEqual(
+            by_name["phantom_docs_mcp"]["policy"],
+            "read_only_docs_no_wallet_action_here",
+        )
+        self.assertEqual(
+            by_name["asuna_unified_chat"]["policy"], "manual_attach_no_auto_post"
+        )
+
     def test_records_all_three_endpoints_with_ports(self):
         by_name = {e["name"]: e for e in self.manifest.to_dict()["endpoints"]}
         self.assertEqual(by_name["fable5"]["port"], 5619)
@@ -174,6 +184,24 @@ class SafetyInvariantTests(unittest.TestCase):
             self.manifest,
             secondary_unification_review_task_id="00000000-0000-0000-0000-000000000000",
         )
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_asuna_auto_post_rejected(self):
+        import dataclasses
+
+        loose = dict(u.INTEGRATIONS[1])
+        loose["policy"] = "auto_post"
+        bad = dataclasses.replace(self.manifest, integrations=(u.INTEGRATIONS[0], loose))
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_phantom_wallet_action_rejected(self):
+        import dataclasses
+
+        loose = dict(u.INTEGRATIONS[0])
+        loose["policy"] = "wallet_signing_enabled"
+        bad = dataclasses.replace(self.manifest, integrations=(loose, u.INTEGRATIONS[1]))
         with self.assertRaises(u.UnificationPolicyError):
             u.validate_manifest(bad)
 

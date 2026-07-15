@@ -34,6 +34,7 @@ banned_fetch = re.compile(
 banned_loop = re.compile(
     r"recursive_improvement_ai_loop|"
     r"ultimate_github_copilot_grok_entanglement|"
+    r"entangled\s*agent|no[_\s-]?boundaries|"
     r"grok_shadow_builder_once|"
     r"install_grok_cli_bounded",
     re.I,
