@@ -82,6 +82,27 @@ if banned_loop.search(hay):
     )
     raise SystemExit(0)
 
+# Live Discord send / webhook posting stays behind an explicit confirm.
+discord_live = re.compile(
+    r"discord_bridge\s+merge|discord_webhook_url|discord(app)?\.com/api/webhooks",
+    re.I,
+)
+if discord_live.search(hay):
+    print(
+        json.dumps(
+            {
+                "permission": "ask",
+                "user_message": (
+                    "This posts to Discord (webhook/bridge). The unify surface is "
+                    "pointer-only (ARMED_AWAITING_TOKEN). Confirm only if you set "
+                    "DISCORD_WEBHOOK_URL yourself and want a live send."
+                ),
+                "agent_message": correction,
+            }
+        )
+    )
+    raise SystemExit(0)
+
 if "4.2 wallfacer" in hay or "sovereign garden forge" in hay or "western_release" in hay:
     print(
         json.dumps(

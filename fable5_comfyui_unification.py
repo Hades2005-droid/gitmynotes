@@ -123,6 +123,18 @@ INTEGRATIONS: tuple = (
             "handoff bundle is written locally; a human attaches it. No auto-post."
         ),
     },
+    {
+        "name": "discord_pplx_unify",
+        "kind": "docs_pointer_catalog",
+        "ref": "https://docs.discord.com/llms.txt",
+        "role": "discord_bridge_pointer",
+        "policy": "armed_awaiting_token_no_api_calls",
+        "note": (
+            "Discord Developer Platform docs mapped to local game bridge lanes. "
+            "Webhook stays ARMED_AWAITING_TOKEN; no API calls, tokens, or posts "
+            "from this surface. Social SDK lane deferred pending approval."
+        ),
+    },
 )
 
 
@@ -330,6 +342,11 @@ def validate_manifest(manifest: UnificationManifest) -> None:
     if asuna and asuna["policy"] != "manual_attach_no_auto_post":
         raise UnificationPolicyError(
             "asuna_unified_chat must be manual-attach, no auto-post"
+        )
+    discord = integ_by_name.get("discord_pplx_unify")
+    if discord and discord["policy"] != "armed_awaiting_token_no_api_calls":
+        raise UnificationPolicyError(
+            "discord_pplx_unify must stay armed-awaiting-token (no API calls here)"
         )
 
     if not manifest.endpoints:

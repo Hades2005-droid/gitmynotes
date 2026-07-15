@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.dirname(_HERE))
 
 import fable5_comfyui_unification as u
 from app_index_codex import build_codex, resolve_ledger, validate_codex
+from discord_pplx_unify import build_unify as build_discord_unify, validate_unify
 
 # Opaque pointers only -- never called from here.
 PERPLEXITY_TASK_ID = u.SECONDARY_UNIFICATION_REVIEW_TASK_ID
@@ -51,6 +52,8 @@ def build_handoff(today: Optional[_date] = None) -> Dict[str, object]:
     manifest = u.build_manifest()
     u.validate_manifest(manifest)
     validate_codex()
+    discord_unify = build_discord_unify()
+    validate_unify(discord_unify)
 
     return {
         "schema": HANDOFF_SCHEMA,
@@ -77,9 +80,24 @@ def build_handoff(today: Optional[_date] = None) -> Dict[str, object]:
                 "policy": "read_only_docs_no_wallet_action_here",
                 "purpose": "In-game 'wallet' flavor layer -- SDK docs context only.",
             },
+            "discordPplxUnify": {
+                "ref": "https://docs.discord.com/llms.txt",
+                "policy": "armed_awaiting_token_no_api_calls",
+                "purpose": "Discord bridge lanes -> webhook ARMED_AWAITING_TOKEN; no API calls/posts.",
+            },
         },
         "unificationManifest": manifest.to_dict(),
         "appIndexCodex": build_codex(),
+        "discordPplxUnify": discord_unify,
+        "playableSlice": {
+            "path": "eden/game",
+            "smoke": "cd eden/game && npm run smoke",
+            "sims": [
+                "simulations/run-4.2-game-simulation.js",
+                "simulations/clock-test.js",
+                "simulations/nyc-local-dev-simulator.js",
+            ],
+        },
         "todayReading": resolve_ledger(today),
         "nextStep": (
             "Human reviews this bundle, then pastes/attaches it into the Asuna "
