@@ -35,6 +35,25 @@ class ManifestShapeTests(unittest.TestCase):
         self.assertEqual(
             d["leadAssistantTaskId"], "2366bfee-b78c-4ddc-9f86-304c30c67c4d"
         )
+        self.assertEqual(
+            d["secondaryUnificationReviewTaskId"],
+            "c6b14a5b-abd7-426c-9992-7095c20b8964",
+        )
+        self.assertEqual(d["secondaryReview"]["role"], "secondary_unification_review")
+        self.assertEqual(d["secondaryReview"]["policy"], "pointer_only_no_scrape")
+
+    def test_content_boundary_rejects_hallucinated_fusion_pipeline(self):
+        boundary = self.manifest.to_dict()["contentBoundary"]
+        self.assertEqual(
+            boundary["domain"], "fictional_adult_18plus_simulation_game"
+        )
+        self.assertTrue(boundary["fictionalAdultSimOnly"])
+        self.assertTrue(boundary["minorsProhibited"])
+        self.assertFalse(boundary["realPersonLikenessEngine"])
+        self.assertFalse(boundary["adultVideoSiteScrape"])
+        self.assertFalse(boundary["recursiveImprovementLoops"])
+        self.assertFalse(boundary["externalMediaExecutionHere"])
+        self.assertIn("FABLE5_MEMORY_CORRECTION.md", boundary["correctionDoc"])
 
     def test_preserves_role_compatibility(self):
         roles = self.manifest.to_dict()["compatibleRoles"]
@@ -136,6 +155,25 @@ class SafetyInvariantTests(unittest.TestCase):
 
         loose = u.MediaPermission(media_type="image", mode="live")
         bad = dataclasses.replace(self.manifest, media_permissions=(loose,))
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_content_boundary_tamper_rejected(self):
+        import dataclasses
+
+        bad_boundary = dict(self.manifest.content_boundary)
+        bad_boundary["adultVideoSiteScrape"] = True
+        bad = dataclasses.replace(self.manifest, content_boundary=bad_boundary)
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_wrong_secondary_task_id_rejected(self):
+        import dataclasses
+
+        bad = dataclasses.replace(
+            self.manifest,
+            secondary_unification_review_task_id="00000000-0000-0000-0000-000000000000",
+        )
         with self.assertRaises(u.UnificationPolicyError):
             u.validate_manifest(bad)
 

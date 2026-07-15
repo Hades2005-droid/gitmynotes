@@ -51,8 +51,33 @@ from typing import Dict, List, Optional
 # on them. They are opaque pointers -- no task *content* is scraped or stored.
 CANONICAL_UNIFICATION_TASK_ID = "37bce2fb-1ba6-471f-854f-3871d9c19947"
 LEAD_ASSISTANT_TASK_ID = "2366bfee-b78c-4ddc-9f86-304c30c67c4d"
+# Secondary authenticated Perplexity Computer task: pointer-only review target.
+# Never scrape or open the thread from this surface; operator attaches locally.
+SECONDARY_UNIFICATION_REVIEW_TASK_ID = "c6b14a5b-abd7-426c-9992-7095c20b8964"
+SECONDARY_REVIEW_ROLE = "secondary_unification_review"
+SECONDARY_REVIEW_POLICY = "pointer_only_no_scrape"
 
 POLICY = "no_scrape_pointer_only"
+
+# Content-boundary correction for prior agent memory hallucinations.
+# This surface records *game/sim provenance pointers*, not a live media pipeline.
+CONTENT_DOMAIN = "fictional_adult_18plus_simulation_game"
+CONTENT_BOUNDARY = {
+    "domain": CONTENT_DOMAIN,
+    "fictionalAdultSimOnly": True,
+    "minorsProhibited": True,
+    "realPersonLikenessEngine": False,
+    "adultVideoSiteScrape": False,
+    "recursiveImprovementLoops": False,
+    "externalMediaExecutionHere": False,
+    "memoryCorrection": (
+        "Prior agent digests that treated pasted lore dumps as live porn-generation, "
+        "Pornhub/xVideos scrape jobs, mother/daughter minor-adjacent shame rules, or "
+        "unbounded fusion reactors are REJECTED. Authorized interpretation: 18+ "
+        "fictional simulation-game content and pointer-only unification metadata."
+    ),
+    "correctionDoc": "docs/FABLE5_MEMORY_CORRECTION.md",
+}
 
 # Roles this repository is expected to remain compatible with.
 ROLE_UNIFICATION_TARGET = "unification_target"
@@ -141,6 +166,10 @@ class UnificationManifest:
     policy: str
     canonical_unification_task_id: str
     lead_assistant_task_id: str
+    secondary_unification_review_task_id: str
+    secondary_review_role: str
+    secondary_review_policy: str
+    content_boundary: dict
     compatible_roles: tuple
     endpoints: tuple
     media_permissions: tuple
@@ -156,6 +185,17 @@ class UnificationManifest:
             "policy": self.policy,
             "canonicalUnificationTaskId": self.canonical_unification_task_id,
             "leadAssistantTaskId": self.lead_assistant_task_id,
+            "secondaryUnificationReviewTaskId": self.secondary_unification_review_task_id,
+            "secondaryReview": {
+                "taskId": self.secondary_unification_review_task_id,
+                "role": self.secondary_review_role,
+                "policy": self.secondary_review_policy,
+                "focus": (
+                    "Unify local Fable5, ComfyUI, Jing Power, and Sonnet artifacts "
+                    "into a bounded technical game plan (manual attach; no scrape)."
+                ),
+            },
+            "contentBoundary": dict(self.content_boundary),
             "compatibleRoles": list(self.compatible_roles),
             "endpoints": [e.to_dict() for e in self.endpoints],
             "mediaPermissions": [p.to_dict() for p in self.media_permissions],
@@ -183,6 +223,10 @@ def build_manifest() -> UnificationManifest:
         policy=POLICY,
         canonical_unification_task_id=CANONICAL_UNIFICATION_TASK_ID,
         lead_assistant_task_id=LEAD_ASSISTANT_TASK_ID,
+        secondary_unification_review_task_id=SECONDARY_UNIFICATION_REVIEW_TASK_ID,
+        secondary_review_role=SECONDARY_REVIEW_ROLE,
+        secondary_review_policy=SECONDARY_REVIEW_POLICY,
+        content_boundary=dict(CONTENT_BOUNDARY),
         compatible_roles=COMPATIBLE_ROLES,
         endpoints=ENDPOINTS,
         media_permissions=media_permissions,
@@ -212,6 +256,30 @@ def validate_manifest(manifest: UnificationManifest) -> None:
         raise UnificationPolicyError("broadcasting must be False")
     if manifest.external_writes:
         raise UnificationPolicyError("externalWrites must be False")
+
+    if manifest.secondary_unification_review_task_id != SECONDARY_UNIFICATION_REVIEW_TASK_ID:
+        raise UnificationPolicyError(
+            "secondaryUnificationReviewTaskId must remain the registered pointer"
+        )
+    if manifest.secondary_review_policy != SECONDARY_REVIEW_POLICY:
+        raise UnificationPolicyError(
+            f"secondaryReview.policy must be {SECONDARY_REVIEW_POLICY!r}"
+        )
+    boundary = manifest.content_boundary or {}
+    if boundary.get("domain") != CONTENT_DOMAIN:
+        raise UnificationPolicyError(f"contentBoundary.domain must be {CONTENT_DOMAIN!r}")
+    if not boundary.get("fictionalAdultSimOnly"):
+        raise UnificationPolicyError("contentBoundary.fictionalAdultSimOnly must be True")
+    if not boundary.get("minorsProhibited"):
+        raise UnificationPolicyError("contentBoundary.minorsProhibited must be True")
+    if boundary.get("realPersonLikenessEngine"):
+        raise UnificationPolicyError("contentBoundary.realPersonLikenessEngine must be False")
+    if boundary.get("adultVideoSiteScrape"):
+        raise UnificationPolicyError("contentBoundary.adultVideoSiteScrape must be False")
+    if boundary.get("recursiveImprovementLoops"):
+        raise UnificationPolicyError("contentBoundary.recursiveImprovementLoops must be False")
+    if boundary.get("externalMediaExecutionHere"):
+        raise UnificationPolicyError("contentBoundary.externalMediaExecutionHere must be False")
 
     if set(manifest.compatible_roles) < set(COMPATIBLE_ROLES):
         raise UnificationPolicyError(
