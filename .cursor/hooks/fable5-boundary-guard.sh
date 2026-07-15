@@ -103,6 +103,31 @@ if discord_live.search(hay):
     )
     raise SystemExit(0)
 
+# Sovereign boundary: external writes are closed_door_default. Any outbound-write
+# family command needs a per-action confirm; it is never blanket-granted.
+external_write = re.compile(
+    r"grok\b.*--send|--send\b.*grok|qdrant.*upsert|"
+    r"atlassian|jira\b.*(create|post|update)|slack.*(post|chat\.postmessage)|"
+    r"(twitter|x)\b.*(post|tweet)|--push-live|remote[_\s-]?render",
+    re.I,
+)
+if external_write.search(hay):
+    print(
+        json.dumps(
+            {
+                "permission": "ask",
+                "user_message": (
+                    "This is an external WRITE (bridge to the outer world). Per the "
+                    "sovereign boundary it is closed_door_default: per-action confirm "
+                    "required, never blanket. Default is a dry-run into the Asuna "
+                    "0-point chamber. Confirm only this specific write."
+                ),
+                "agent_message": correction,
+            }
+        )
+    )
+    raise SystemExit(0)
+
 if "4.2 wallfacer" in hay or "sovereign garden forge" in hay or "western_release" in hay:
     print(
         json.dumps(

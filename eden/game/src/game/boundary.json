@@ -1,0 +1,43 @@
+{
+  "chamber": {
+    "archetype": "Wuji / Dimension 0 / Absolute Vacuum",
+    "externalWriteByDefault": false,
+    "meaning": "The contained terminal state at the bridge to the outer world. External writes resolve here as a dry-run unless a per-action confirm is present; by default nothing crosses.",
+    "name": "asuna_0_point_chamber"
+  },
+  "domain": "fictional_adult_18plus_simulation_game",
+  "external": {
+    "actions": [
+      "grok_send",
+      "qdrant_upsert",
+      "github_push",
+      "atlassian_write",
+      "x_write",
+      "slack_write",
+      "remote_render"
+    ],
+    "blanketGrant": false,
+    "closedDoorDefault": true,
+    "default": "confirm",
+    "door": "closed_door_default",
+    "note": "Yin side: outbound writes require per-action confirm; never blanket.",
+    "perActionConfirm": true
+  },
+  "internal": {
+    "actions": [
+      "read",
+      "open",
+      "local_file_staging",
+      "catalog_insertion",
+      "dry_run",
+      "local_render_preview"
+    ],
+    "default": "auto",
+    "door": "open_door_default",
+    "note": "Yang side: reads/actions/insertions are auto, local-only.",
+    "openDoorDefault": true
+  },
+  "policy": "no_scrape_pointer_only",
+  "surface": "sovereign_boundary_truth_line",
+  "tensegrityVector": 11
+}

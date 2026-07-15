@@ -11,7 +11,7 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
-import { startRound, playRounds, reduce, dateTurnPrompt } from "../src/game/round.js";
+import { startRound, playRounds, reduce, dateTurnPrompt, crossBridge } from "../src/game/round.js";
 
 const _here = dirname(fileURLToPath(import.meta.url));
 const LEDGER = JSON.parse(readFileSync(join(_here, "../src/game/ledger.json"), "utf8"));
@@ -59,4 +59,30 @@ test("restart plays N rounds and tallies resolutions", () => {
   assert.equal(rounds.length, 3);
   const total = Object.values(tally).reduce((a, b) => a + b, 0);
   assert.equal(total, 3);
+});
+
+test("bridge ending defaults to a contained 0-point chamber dry-run", () => {
+  const r = startRound({ date: new Date("2026-07-15T12:00:00Z"), seed: 42, bridge: true });
+  assert.equal(r.ending.side, "external");
+  assert.equal(r.ending.allowed, false);
+  assert.equal(r.ending.dryRun, true);
+  assert.equal(r.ending.chamber, "asuna_0_point_chamber");
+  assert.equal(r.ending.externalWritePerformed, false);
+});
+
+test("crossBridge never performs a write, even when confirmed", () => {
+  const dry = crossBridge("grok_send");
+  assert.equal(dry.allowed, false);
+  assert.equal(dry.externalWritePerformed, false);
+
+  const confirmed = crossBridge("github_push", "operator-ok");
+  assert.equal(confirmed.allowed, true);
+  assert.equal(confirmed.dryRun, false);
+  assert.equal(confirmed.externalWritePerformed, false); // deferred to a runtime, never here
+});
+
+test("internal action crosses the open door automatically", () => {
+  const internal = crossBridge("read");
+  assert.equal(internal.side, "internal");
+  assert.equal(internal.allowed, true);
 });

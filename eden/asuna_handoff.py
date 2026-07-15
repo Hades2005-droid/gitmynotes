@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(_HERE))
 import fable5_comfyui_unification as u
 from app_index_codex import build_codex, resolve_ledger, validate_codex
 from discord_pplx_unify import build_unify as build_discord_unify, validate_unify
+from sovereign_boundary import build_boundary, validate_boundary
 
 # Opaque pointers only -- never called from here.
 PERPLEXITY_TASK_ID = u.SECONDARY_UNIFICATION_REVIEW_TASK_ID
@@ -54,6 +55,8 @@ def build_handoff(today: Optional[_date] = None) -> Dict[str, object]:
     validate_codex()
     discord_unify = build_discord_unify()
     validate_unify(discord_unify)
+    boundary = build_boundary()
+    validate_boundary(boundary)
 
     return {
         "schema": HANDOFF_SCHEMA,
@@ -89,6 +92,7 @@ def build_handoff(today: Optional[_date] = None) -> Dict[str, object]:
         "unificationManifest": manifest.to_dict(),
         "appIndexCodex": build_codex(),
         "discordPplxUnify": discord_unify,
+        "sovereignBoundary": boundary,
         "playableSlice": {
             "path": "eden/game",
             "smoke": "cd eden/game && npm run smoke",

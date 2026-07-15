@@ -20,6 +20,8 @@ import { GameSimulation, makeRng, CHARACTERS } from "../../simulations/run-4.2-g
 const _here = dirname(fileURLToPath(import.meta.url));
 const LEDGER = JSON.parse(readFileSync(join(_here, "ledger.json"), "utf8"));
 const MASTER_NUMBERS = new Set(LEDGER.masterNumbers);
+// Canonical two-door boundary policy (exported from eden/sovereign_boundary.py).
+const BOUNDARY = JSON.parse(readFileSync(join(_here, "boundary.json"), "utf8"));
 
 /** Digit-sum reduce to 1-9, preserving master numbers 11/22/33 (mirrors codex). */
 export function reduce(n) {
@@ -63,13 +65,39 @@ function anchorForFrequency(reduced) {
 }
 
 /**
+ * Resolve a "cross the bridge to the outer world" action under the sovereign
+ * boundary. External writes are closed_door_default: without a per-action
+ * confirm token the crossing resolves as a contained dry-run into the Asuna
+ * 0-point chamber (Wuji / Dimension 0) — nothing leaves the machine.
+ */
+export function crossBridge(action = "grok_send", confirmToken = null) {
+  const ext = new Set(BOUNDARY.external.actions);
+  const isExternal = ext.has(action) || !new Set(BOUNDARY.internal.actions).has(action);
+  const confirmed = Boolean(confirmToken);
+  if (!isExternal) {
+    return { action, side: "internal", door: BOUNDARY.internal.door, allowed: true, dryRun: false, chamber: null };
+  }
+  return {
+    action,
+    side: "external",
+    door: BOUNDARY.external.door,
+    allowed: confirmed,           // per-action confirm only; never blanket
+    requiresConfirm: true,
+    blanketGrant: false,
+    dryRun: !confirmed,
+    externalWritePerformed: false, // the game never performs the write
+    chamber: confirmed ? null : BOUNDARY.chamber.name,
+  };
+}
+
+/**
  * Play one complete, bounded round.
  *
  * Returns a JSON-able result with: the turn prompt, the anchor matriarch, the
  * mechanics outcome, and an explainable resolution (win/hold/lose) against a
  * harmony threshold — a visible end state the UI (or a test) can assert on.
  */
-export function startRound({ date = new Date(), seed = 42, durationMs = 12000, anchor } = {}) {
+export function startRound({ date = new Date(), seed = 42, durationMs = 12000, anchor, bridge } = {}) {
   const prompt = dateTurnPrompt(date);
   const chosenAnchor = anchor || anchorForFrequency(prompt.micro.reduced);
 
@@ -83,7 +111,7 @@ export function startRound({ date = new Date(), seed = 42, durationMs = 12000, a
   if (outcome.finalHarmony >= threshold + 20) resolution = "win";
   else if (outcome.finalHarmony < threshold) resolution = "lose";
 
-  return {
+  const result = {
     schema: "shadow_jing.party_round.v1",
     domain: LEDGER.domain,
     turnPrompt: prompt,
@@ -92,6 +120,16 @@ export function startRound({ date = new Date(), seed = 42, durationMs = 12000, a
     threshold,
     resolution,
   };
+
+  // Hierophant / Crucible ending: optionally step onto the bridge to the outer
+  // world. By default (no confirm) it resolves into the contained 0-point chamber.
+  if (bridge) {
+    const action = typeof bridge === "string" ? bridge : (bridge.action || "grok_send");
+    const confirmToken = typeof bridge === "object" ? bridge.confirmToken || null : null;
+    result.ending = crossBridge(action, confirmToken);
+  }
+
+  return result;
 }
 
 /** Play N sequential rounds (restart / new-round support). Deterministic per seed. */
