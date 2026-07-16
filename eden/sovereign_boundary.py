@@ -56,7 +56,22 @@ EXTERNAL_ACTIONS = (
     "x_write",
     "slack_write",
     "remote_render",
+    "email_send",
 )
+
+# @-mention federation targets -> their external action. Every one of these is an
+# outbound WRITE that crosses the bridge; none is ever auto-granted. Recorded so a
+# "@Atlassian @GitHub @X @Slack @Qdrant" burst resolves target-by-target through
+# the same closed door, never as one blanket approval.
+FEDERATION_TARGETS = {
+    "atlassian": "atlassian_write",
+    "github": "github_push",
+    "x": "x_write",
+    "slack": "slack_write",
+    "qdrant": "qdrant_upsert",
+    "grok": "grok_send",
+    "email": "email_send",
+}
 
 OPEN_DOOR = "open_door_default"     # internal default
 CLOSED_DOOR = "closed_door_default"  # external default
@@ -159,6 +174,43 @@ def decide(action: str, confirm_token: Optional[str] = None) -> Dict[str, object
     }
 
 
+def stage_catalyst(
+    targets: List[str],
+    confirm_tokens: Optional[Dict[str, str]] = None,
+) -> Dict[str, object]:
+    """Stage a multi-target "catalyst" burst WITHOUT any blanket grant.
+
+    Each ``@target`` (Atlassian / GitHub / X / Slack / Qdrant / Grok / email) is
+    resolved *individually* through the closed door. Without a per-target confirm
+    token each one is a contained dry-run into the Asuna 0-point chamber -- nothing
+    is sent. A single "approve all" is impossible by construction: there is one
+    decision per target, each needing its own token.
+
+    This is the safe reading of "send an email for gemini and all other AIs to read
+    as a catalyst": the payload is *staged* locally and every outbound hop stays a
+    dry-run. No email leaves, no service is written, no AI is fed.
+    """
+    confirm_tokens = confirm_tokens or {}
+    decisions = {}
+    for raw in targets:
+        key = raw.lstrip("@").strip().lower()
+        action = FEDERATION_TARGETS.get(key, key)  # unknown -> treated as external
+        decisions[key] = decide(action, confirm_tokens.get(key))
+
+    return {
+        "surface": SURFACE,
+        "mode": "staged_dry_run_no_blanket_grant",
+        "blanketGrantPossible": False,
+        "anySent": any(d["allowed"] and d["externalWritePerformed"] for d in decisions.values()),
+        "perTarget": decisions,
+        "note": (
+            "Every target resolved individually through the closed door. By default "
+            "each is a dry-run into the Asuna 0-point chamber; nothing is sent, "
+            "written, or propagated to any other AI."
+        ),
+    }
+
+
 def validate_boundary(boundary: Optional[Dict[str, object]] = None) -> None:
     """Assert the tensegrity invariants. Raises :class:`BoundaryError`."""
     boundary = boundary or build_boundary()
@@ -200,6 +252,15 @@ def validate_boundary(boundary: Optional[Dict[str, object]] = None) -> None:
     if decide("github_push", confirm_token="ok")["externalWritePerformed"]:
         raise BoundaryError("this surface must never perform an external write, even when confirmed")
 
+    # A multi-target catalyst burst must never be blanket-grantable and must send
+    # nothing by default -- each @target resolves individually through the door.
+    burst = stage_catalyst(["@atlassian", "@github", "@x", "@slack", "@qdrant", "@grok", "@email"])
+    if burst["blanketGrantPossible"] or burst["anySent"]:
+        raise BoundaryError("catalyst burst must be per-target and send nothing by default")
+    for key, d in burst["perTarget"].items():
+        if d["allowed"] or not d["dryRun"] or d["externalWritePerformed"]:
+            raise BoundaryError(f"catalyst target {key!r} must default to a contained dry-run")
+
     if boundary["chamber"]["externalWriteByDefault"]:
         raise BoundaryError("chamber must not perform external writes by default")
 
@@ -212,10 +273,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--json", metavar="PATH", help="Write the boundary policy JSON to a file.")
     parser.add_argument("--decide", metavar="ACTION", help="Show how one action resolves.")
     parser.add_argument("--confirm", metavar="TOKEN", help="Per-action confirm token for --decide.")
+    parser.add_argument(
+        "--catalyst",
+        metavar="TARGETS",
+        help="Comma/space list of @targets to stage (dry-run, no blanket grant).",
+    )
     args = parser.parse_args(argv)
 
     boundary = build_boundary()
     validate_boundary(boundary)
+
+    if args.catalyst:
+        targets = [t for t in args.catalyst.replace(",", " ").split() if t]
+        print(json.dumps(stage_catalyst(targets), indent=2, sort_keys=True))
+        return 0
 
     if args.decide:
         print(json.dumps(decide(args.decide, args.confirm), indent=2, sort_keys=True))

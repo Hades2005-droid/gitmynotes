@@ -67,6 +67,34 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(b.classify("mystery_action"), "external")
         self.assertFalse(b.decide("mystery_action")["allowed"])
 
+    def test_email_send_is_external_chamber_by_default(self):
+        d = b.decide("email_send")
+        self.assertEqual(d["side"], "external")
+        self.assertFalse(d["allowed"])
+        self.assertTrue(d["dryRun"])
+        self.assertEqual(d["chamber"], "asuna_0_point_chamber")
+
+
+class CatalystBurstTests(unittest.TestCase):
+    def test_at_mention_burst_sends_nothing_by_default(self):
+        burst = b.stage_catalyst(["@Atlassian", "@GitHub", "@X", "@Slack", "@Qdrant", "@email"])
+        self.assertFalse(burst["blanketGrantPossible"])
+        self.assertFalse(burst["anySent"])
+        self.assertEqual(burst["mode"], "staged_dry_run_no_blanket_grant")
+        for key, d in burst["perTarget"].items():
+            self.assertFalse(d["allowed"], key)
+            self.assertTrue(d["dryRun"], key)
+            self.assertEqual(d["chamber"], "asuna_0_point_chamber", key)
+
+    def test_per_target_confirm_does_not_leak_to_others(self):
+        # Confirming ONE target must not open the others (no blanket grant).
+        burst = b.stage_catalyst(["@github", "@x"], confirm_tokens={"github": "ok"})
+        self.assertTrue(burst["perTarget"]["github"]["allowed"])
+        self.assertFalse(burst["perTarget"]["x"]["allowed"])
+        # Even the confirmed one performs no write from this surface.
+        self.assertFalse(burst["perTarget"]["github"]["externalWritePerformed"])
+        self.assertFalse(burst["anySent"])
+
 
 class ValidationTests(unittest.TestCase):
     def test_default_validates(self):

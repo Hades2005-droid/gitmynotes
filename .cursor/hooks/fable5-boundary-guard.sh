@@ -108,7 +108,8 @@ if discord_live.search(hay):
 external_write = re.compile(
     r"grok\b.*--send|--send\b.*grok|qdrant.*upsert|"
     r"atlassian|jira\b.*(create|post|update)|slack.*(post|chat\.postmessage)|"
-    r"(twitter|x)\b.*(post|tweet)|--push-live|remote[_\s-]?render",
+    r"(twitter|x)\b.*(post|tweet)|--push-live|remote[_\s-]?render|"
+    r"sendmail|smtplib|msmtp|\bmail\s+-s\b|curl.*smtp|mailx",
     re.I,
 )
 if external_write.search(hay):

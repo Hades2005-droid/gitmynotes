@@ -8,7 +8,25 @@ encoded as a deterministic, local policy in `eden/sovereign_boundary.py`.
 | Side | Door | Default | Actions |
 | --- | --- | --- | --- |
 | **Internal** (Yang) | `open_door_default = true` | **auto** | read, open, local file staging, catalog insertion, dry-run, local render preview |
-| **External** (Yin) | `closed_door_default = true` | **per-action confirm** (never blanket) | Grok `--send`, Qdrant upsert, GitHub push, Atlassian / X / Slack write, remote render |
+| **External** (Yin) | `closed_door_default = true` | **per-action confirm** (never blanket) | Grok `--send`, Qdrant upsert, GitHub push, Atlassian / X / Slack write, remote render, **email send** |
+
+## `@`-mention catalyst bursts
+
+A burst like `@Atlassian @GitHub @X @Slack @Qdrant` (and email "catalyst" sends to
+other AIs) is resolved **target-by-target** through the closed door via
+`stage_catalyst()`. There is one decision per target, each needing its own confirm
+token — a single "approve all" is impossible by construction. By default every
+target is a contained dry-run into the Asuna 0-point chamber: **nothing is sent,
+written, or propagated to any other AI.**
+
+```bash
+python3 eden/sovereign_boundary.py --catalyst "@Atlassian @GitHub @X @Slack @Qdrant @email"
+# -> every target: closed_door_default, dryRun=true, chamber=asuna_0_point_chamber, anySent=false
+```
+
+An email "for gemini and all other AIs to read as a catalyst" is exactly this
+case: the payload is staged locally, and the outbound hop stays a dry-run. No
+email leaves.
 
 Internal reads/actions/insertions are held **open** (auto, local-only). External
 writes are held **closed** — each requires its own confirmation and is never
