@@ -1,0 +1,16 @@
+{
+  "name": "shadow-jing-garden-4.2-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless, local-only party-game simulations for the fictional 18+ Shadow Jing Garden 4.2 sim. No network, no media, no external calls.",
+  "scripts": {
+    "sim": "node simulations/run-4.2-game-simulation.js",
+    "clock": "node simulations/clock-test.js",
+    "nyc": "node simulations/nyc-local-dev-simulator.js",
+    "round": "node simulations/party-round.js --rounds=3 --seed=42",
+    "test": "node --test simulations/*.test.mjs",
+    "smoke": "node simulations/run-4.2-game-simulation.js && node simulations/clock-test.js && node simulations/nyc-local-dev-simulator.js --requests=40 --seed=42 && node simulations/party-round.js --rounds=3 --seed=42"
+  },
+  "license": "SEE LICENSE IN ../../LICENSE"
+}

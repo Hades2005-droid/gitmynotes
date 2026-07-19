@@ -51,8 +51,57 @@ from typing import Dict, List, Optional
 # on them. They are opaque pointers -- no task *content* is scraped or stored.
 CANONICAL_UNIFICATION_TASK_ID = "37bce2fb-1ba6-471f-854f-3871d9c19947"
 LEAD_ASSISTANT_TASK_ID = "2366bfee-b78c-4ddc-9f86-304c30c67c4d"
+# Secondary authenticated Perplexity Computer task: pointer-only review target.
+# Never scrape or open the thread from this surface; operator attaches locally.
+SECONDARY_UNIFICATION_REVIEW_TASK_ID = "c6b14a5b-abd7-426c-9992-7095c20b8964"
+SECONDARY_REVIEW_ROLE = "secondary_unification_review"
+SECONDARY_REVIEW_POLICY = "pointer_only_no_scrape"
 
 POLICY = "no_scrape_pointer_only"
+
+# Content-boundary correction for prior agent memory hallucinations.
+# This surface records *game/sim provenance pointers*, not a live media pipeline.
+CONTENT_DOMAIN = "fictional_adult_18plus_simulation_game"
+CONTENT_BOUNDARY = {
+    "domain": CONTENT_DOMAIN,
+    "fictionalAdultSimOnly": True,
+    "minorsProhibited": True,
+    "realPersonLikenessEngine": False,
+    "adultVideoSiteScrape": False,
+    "recursiveImprovementLoops": False,
+    "externalMediaExecutionHere": False,
+    "memoryCorrection": (
+        "Prior agent digests that treated pasted lore dumps as live porn-generation, "
+        "Pornhub/xVideos scrape jobs, mother/daughter minor-adjacent shame rules, or "
+        "unbounded fusion reactors are REJECTED. Authorized interpretation: 18+ "
+        "fictional simulation-game content and pointer-only unification metadata."
+    ),
+    "correctionDoc": "docs/FABLE5_MEMORY_CORRECTION.md",
+}
+
+# Operator authorization basis. The operator confirmed full admin authorization
+# to INCLUDE these sources -- and, in the same instruction, that this grants no
+# API calls, no tokens, and keeps the webhook ARMED_AWAITING_TOKEN. So the
+# authorization is *inclusion-only* and, by construction, can never flip a safety
+# flag (enforced in validate_manifest).
+OPERATOR_AUTHORIZATION = {
+    "basis": "operator_admin_authorized",
+    "scope": "pointer_only_inclusion",
+    "grants": ["include_sources_as_pointer_catalog_entries"],
+    "doesNotGrant": [
+        "network_or_api_calls",
+        "tokens_or_credentials",
+        "live_webhook_send",
+        "content_boundary_exception",
+        "autonomous_broadcast",
+    ],
+    "note": (
+        "Operator confirmed full admin authorization to INCLUDE these sources. "
+        "Per that same instruction: no API calls, no tokens, webhook stays "
+        "ARMED_AWAITING_TOKEN. Authorization is inclusion-only and never relaxes "
+        "a safety invariant."
+    ),
+}
 
 # Roles this repository is expected to remain compatible with.
 ROLE_UNIFICATION_TARGET = "unification_target"
@@ -70,6 +119,47 @@ MEDIA_TYPES = ("image", "video", "audio")
 # All local, loopback-only endpoints. Hosts are intentionally 127.0.0.1: these
 # are pointers to runtimes the operator runs locally, not remote services.
 LOCAL_HOST = "127.0.0.1"
+
+# External integrations recorded as *pointer-only* references. This surface never
+# calls, authenticates to, or scrapes them; it only records that the game may hand
+# a bounded, operator-approved payload to them elsewhere.
+INTEGRATIONS: tuple = (
+    {
+        "name": "phantom_docs_mcp",
+        "kind": "mcp_docs_readonly",
+        "ref": "https://docs.phantom.com/mcp",
+        "role": "wallet_sdk_docs_context",
+        "policy": "read_only_docs_no_wallet_action_here",
+        "note": (
+            "Phantom Cursor plugin docs MCP -- read-only SDK guidance for a "
+            "fictional in-game 'wallet' flavor layer. No keys, no signing, no "
+            "on-chain action from this surface."
+        ),
+    },
+    {
+        "name": "asuna_unified_chat",
+        "kind": "chat_handoff_target",
+        "ref": "local://asuna-unified-chat",
+        "role": "fable5_evolution_handoff",
+        "policy": "manual_attach_no_auto_post",
+        "note": (
+            "Unified Asuna chat that Fable 5 evolutions feed forward into. The "
+            "handoff bundle is written locally; a human attaches it. No auto-post."
+        ),
+    },
+    {
+        "name": "discord_pplx_unify",
+        "kind": "docs_pointer_catalog",
+        "ref": "https://docs.discord.com/llms.txt",
+        "role": "discord_bridge_pointer",
+        "policy": "armed_awaiting_token_no_api_calls",
+        "note": (
+            "Discord Developer Platform docs mapped to local game bridge lanes. "
+            "Webhook stays ARMED_AWAITING_TOKEN; no API calls, tokens, or posts "
+            "from this surface. Social SDK lane deferred pending approval."
+        ),
+    },
+)
 
 
 @dataclass(frozen=True)
@@ -141,9 +231,14 @@ class UnificationManifest:
     policy: str
     canonical_unification_task_id: str
     lead_assistant_task_id: str
+    secondary_unification_review_task_id: str
+    secondary_review_role: str
+    secondary_review_policy: str
+    content_boundary: dict
     compatible_roles: tuple
     endpoints: tuple
     media_permissions: tuple
+    integrations: tuple = INTEGRATIONS
     external_requests: int = 0
     training_allowed: bool = False
     weight_auto_download: bool = False
@@ -156,9 +251,22 @@ class UnificationManifest:
             "policy": self.policy,
             "canonicalUnificationTaskId": self.canonical_unification_task_id,
             "leadAssistantTaskId": self.lead_assistant_task_id,
+            "secondaryUnificationReviewTaskId": self.secondary_unification_review_task_id,
+            "secondaryReview": {
+                "taskId": self.secondary_unification_review_task_id,
+                "role": self.secondary_review_role,
+                "policy": self.secondary_review_policy,
+                "focus": (
+                    "Unify local Fable5, ComfyUI, Jing Power, and Sonnet artifacts "
+                    "into a bounded technical game plan (manual attach; no scrape)."
+                ),
+            },
+            "contentBoundary": dict(self.content_boundary),
             "compatibleRoles": list(self.compatible_roles),
             "endpoints": [e.to_dict() for e in self.endpoints],
             "mediaPermissions": [p.to_dict() for p in self.media_permissions],
+            "integrations": [dict(i) for i in self.integrations],
+            "operatorAuthorization": dict(OPERATOR_AUTHORIZATION),
             "externalRequests": self.external_requests,
             "trainingAllowed": self.training_allowed,
             "weightAutoDownload": self.weight_auto_download,
@@ -183,6 +291,10 @@ def build_manifest() -> UnificationManifest:
         policy=POLICY,
         canonical_unification_task_id=CANONICAL_UNIFICATION_TASK_ID,
         lead_assistant_task_id=LEAD_ASSISTANT_TASK_ID,
+        secondary_unification_review_task_id=SECONDARY_UNIFICATION_REVIEW_TASK_ID,
+        secondary_review_role=SECONDARY_REVIEW_ROLE,
+        secondary_review_policy=SECONDARY_REVIEW_POLICY,
+        content_boundary=dict(CONTENT_BOUNDARY),
         compatible_roles=COMPATIBLE_ROLES,
         endpoints=ENDPOINTS,
         media_permissions=media_permissions,
@@ -213,10 +325,74 @@ def validate_manifest(manifest: UnificationManifest) -> None:
     if manifest.external_writes:
         raise UnificationPolicyError("externalWrites must be False")
 
+    # Operator authorization is inclusion-only: it must explicitly refuse to grant
+    # network, tokens, live send, content-boundary exceptions, or broadcast. This
+    # guarantees "full admin authorization" can never be read as a safety bypass.
+    auth = OPERATOR_AUTHORIZATION
+    if auth["scope"] != "pointer_only_inclusion":
+        raise UnificationPolicyError("operator authorization must be pointer_only_inclusion")
+    forbidden = {
+        "network_or_api_calls",
+        "tokens_or_credentials",
+        "live_webhook_send",
+        "content_boundary_exception",
+        "autonomous_broadcast",
+    }
+    if not forbidden.issubset(set(auth["doesNotGrant"])):
+        raise UnificationPolicyError(
+            "operator authorization must explicitly withhold network/tokens/live-send/"
+            "content-boundary/broadcast grants"
+        )
+    if forbidden & set(auth["grants"]):
+        raise UnificationPolicyError("operator authorization must not grant any forbidden capability")
+
+    if manifest.secondary_unification_review_task_id != SECONDARY_UNIFICATION_REVIEW_TASK_ID:
+        raise UnificationPolicyError(
+            "secondaryUnificationReviewTaskId must remain the registered pointer"
+        )
+    if manifest.secondary_review_policy != SECONDARY_REVIEW_POLICY:
+        raise UnificationPolicyError(
+            f"secondaryReview.policy must be {SECONDARY_REVIEW_POLICY!r}"
+        )
+    boundary = manifest.content_boundary or {}
+    if boundary.get("domain") != CONTENT_DOMAIN:
+        raise UnificationPolicyError(f"contentBoundary.domain must be {CONTENT_DOMAIN!r}")
+    if not boundary.get("fictionalAdultSimOnly"):
+        raise UnificationPolicyError("contentBoundary.fictionalAdultSimOnly must be True")
+    if not boundary.get("minorsProhibited"):
+        raise UnificationPolicyError("contentBoundary.minorsProhibited must be True")
+    if boundary.get("realPersonLikenessEngine"):
+        raise UnificationPolicyError("contentBoundary.realPersonLikenessEngine must be False")
+    if boundary.get("adultVideoSiteScrape"):
+        raise UnificationPolicyError("contentBoundary.adultVideoSiteScrape must be False")
+    if boundary.get("recursiveImprovementLoops"):
+        raise UnificationPolicyError("contentBoundary.recursiveImprovementLoops must be False")
+    if boundary.get("externalMediaExecutionHere"):
+        raise UnificationPolicyError("contentBoundary.externalMediaExecutionHere must be False")
+
     if set(manifest.compatible_roles) < set(COMPATIBLE_ROLES):
         raise UnificationPolicyError(
             "manifest must preserve compatibility with "
             f"{COMPATIBLE_ROLES!r}, got {manifest.compatible_roles!r}"
+        )
+
+    # Integrations are pointer-only: Phantom docs stay read-only (no wallet action
+    # from here) and the Asuna chat handoff never auto-posts.
+    integ_by_name = {i["name"]: i for i in manifest.integrations}
+    phantom = integ_by_name.get("phantom_docs_mcp")
+    if phantom and phantom["policy"] != "read_only_docs_no_wallet_action_here":
+        raise UnificationPolicyError(
+            "phantom_docs_mcp must stay read-only docs (no wallet action here)"
+        )
+    asuna = integ_by_name.get("asuna_unified_chat")
+    if asuna and asuna["policy"] != "manual_attach_no_auto_post":
+        raise UnificationPolicyError(
+            "asuna_unified_chat must be manual-attach, no auto-post"
+        )
+    discord = integ_by_name.get("discord_pplx_unify")
+    if discord and discord["policy"] != "armed_awaiting_token_no_api_calls":
+        raise UnificationPolicyError(
+            "discord_pplx_unify must stay armed-awaiting-token (no API calls here)"
         )
 
     if not manifest.endpoints:

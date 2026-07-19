@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/fable5-boundary-guard.sh",
+        "failClosed": false,
+        "timeout": 10
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": ".cursor/hooks/fable5-boundary-guard.sh",
+        "failClosed": false,
+        "timeout": 10
+      }
+    ]
+  }
+}

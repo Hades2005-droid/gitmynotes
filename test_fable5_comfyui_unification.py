@@ -35,11 +35,53 @@ class ManifestShapeTests(unittest.TestCase):
         self.assertEqual(
             d["leadAssistantTaskId"], "2366bfee-b78c-4ddc-9f86-304c30c67c4d"
         )
+        self.assertEqual(
+            d["secondaryUnificationReviewTaskId"],
+            "c6b14a5b-abd7-426c-9992-7095c20b8964",
+        )
+        self.assertEqual(d["secondaryReview"]["role"], "secondary_unification_review")
+        self.assertEqual(d["secondaryReview"]["policy"], "pointer_only_no_scrape")
+
+    def test_content_boundary_rejects_hallucinated_fusion_pipeline(self):
+        boundary = self.manifest.to_dict()["contentBoundary"]
+        self.assertEqual(
+            boundary["domain"], "fictional_adult_18plus_simulation_game"
+        )
+        self.assertTrue(boundary["fictionalAdultSimOnly"])
+        self.assertTrue(boundary["minorsProhibited"])
+        self.assertFalse(boundary["realPersonLikenessEngine"])
+        self.assertFalse(boundary["adultVideoSiteScrape"])
+        self.assertFalse(boundary["recursiveImprovementLoops"])
+        self.assertFalse(boundary["externalMediaExecutionHere"])
+        self.assertIn("FABLE5_MEMORY_CORRECTION.md", boundary["correctionDoc"])
 
     def test_preserves_role_compatibility(self):
         roles = self.manifest.to_dict()["compatibleRoles"]
         self.assertIn("unification_target", roles)
         self.assertIn("fable5_comfyui_open_merge_target", roles)
+
+    def test_operator_authorization_is_inclusion_only(self):
+        auth = self.manifest.to_dict()["operatorAuthorization"]
+        self.assertEqual(auth["scope"], "pointer_only_inclusion")
+        for forbidden in (
+            "network_or_api_calls",
+            "tokens_or_credentials",
+            "live_webhook_send",
+            "content_boundary_exception",
+            "autonomous_broadcast",
+        ):
+            self.assertIn(forbidden, auth["doesNotGrant"])
+            self.assertNotIn(forbidden, auth["grants"])
+
+    def test_pointer_only_integrations_present(self):
+        by_name = {i["name"]: i for i in self.manifest.to_dict()["integrations"]}
+        self.assertEqual(
+            by_name["phantom_docs_mcp"]["policy"],
+            "read_only_docs_no_wallet_action_here",
+        )
+        self.assertEqual(
+            by_name["asuna_unified_chat"]["policy"], "manual_attach_no_auto_post"
+        )
 
     def test_records_all_three_endpoints_with_ports(self):
         by_name = {e["name"]: e for e in self.manifest.to_dict()["endpoints"]}
@@ -136,6 +178,54 @@ class SafetyInvariantTests(unittest.TestCase):
 
         loose = u.MediaPermission(media_type="image", mode="live")
         bad = dataclasses.replace(self.manifest, media_permissions=(loose,))
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_content_boundary_tamper_rejected(self):
+        import dataclasses
+
+        bad_boundary = dict(self.manifest.content_boundary)
+        bad_boundary["adultVideoSiteScrape"] = True
+        bad = dataclasses.replace(self.manifest, content_boundary=bad_boundary)
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_wrong_secondary_task_id_rejected(self):
+        import dataclasses
+
+        bad = dataclasses.replace(
+            self.manifest,
+            secondary_unification_review_task_id="00000000-0000-0000-0000-000000000000",
+        )
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_asuna_auto_post_rejected(self):
+        import dataclasses
+
+        loose = dict(u.INTEGRATIONS[1])
+        loose["policy"] = "auto_post"
+        bad = dataclasses.replace(self.manifest, integrations=(u.INTEGRATIONS[0], loose))
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_phantom_wallet_action_rejected(self):
+        import dataclasses
+
+        loose = dict(u.INTEGRATIONS[0])
+        loose["policy"] = "wallet_signing_enabled"
+        bad = dataclasses.replace(self.manifest, integrations=(loose, u.INTEGRATIONS[1]))
+        with self.assertRaises(u.UnificationPolicyError):
+            u.validate_manifest(bad)
+
+    def test_discord_live_webhook_policy_rejected(self):
+        import dataclasses
+
+        loose = dict(u.INTEGRATIONS[2])
+        loose["policy"] = "live_send_enabled"
+        bad = dataclasses.replace(
+            self.manifest, integrations=(u.INTEGRATIONS[0], u.INTEGRATIONS[1], loose)
+        )
         with self.assertRaises(u.UnificationPolicyError):
             u.validate_manifest(bad)
 
